@@ -1,0 +1,50 @@
+name: Build Book PDF
+
+# main 브랜치에 push 될 때마다 실행
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) 리포지토리 코드 체크아웃
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2) Python 환경 설정
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      # 3) 가상환경 생성 및 의존성 설치
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install black flake8 reportlab pypandoc PyPDF2 openai python-dotenv
+
+      # 4) 챕터 생성 스크립트 실행 (topics.csv 기준)
+      - name: Generate chapters
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          source .venv/bin/activate
+          python generate_chapters.py
+
+      # 5) PDF 빌드 스크립트 실행
+      - name: Build PDF
+        run: |
+          source .venv/bin/activate
+          python build.py
+
+      # 6) 완성본 아티팩트 업로드
+      - name: Upload completed book
+        uses: actions/upload-artifact@v3
+        with:
+          name: complete-book
+          path: dist/complete_book.pdf
